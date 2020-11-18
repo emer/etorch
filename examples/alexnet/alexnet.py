@@ -4,21 +4,19 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-# use:
-# pyleabra -i etra25.py 
-# to run in gui interactive mode from the command line (or pyleabra, import etra25)
-# see main function at the end for startup args
+# AlexNet network copied directly from pytorch torchvision github repo:
+# https://github.com/pytorch/vision/blob/master/torchvision/models/alexnet.py
 
-from leabra import go, etorch, emer, relpos, eplot, env, agg, patgen, prjn, etable, efile, split, etensor, params, netview, rand, erand, gi, giv, pygiv, pyparams, pyet, mat32
-
-import etor
+from leabra import go, etorch, emer, relpos, eplot, env, agg, patgen, prjn, etable, efile, split, etensor, params, netview, rand, erand, gi, giv, pygiv, pyparams, pyet, mat32, etor
 
 import io, sys, getopt
 from datetime import datetime, timezone
 
 import numpy as np
 import torch
-import torch.utils.data as data_utils
+import torch.nn as nn
+from torch.utils.model_zoo import load_url as load_state_dict_from_url
+from typing import Any
 
 # import matplotlib
 # matplotlib.use('SVG')
@@ -31,51 +29,73 @@ TheSim = 1
 # LogPrec is precision for saving float values in logs
 LogPrec = 4
 
+model_urls = {
+    'alexnet': 'https://download.pytorch.org/models/alexnet-owt-4df8aa71.pth',
+}
 
-#####################################################    
-#     Torch network
+class AlexNet(nn.Module):
 
-class Feedforward(torch.nn.Module):
-    """
-    Defines a basic feedforward network, input -> h1 -> h2 -> output
-    """
-    def __init__(self, in_size, hid_size, out_size):
-        super(Feedforward, self).__init__()
-        self.in_size = in_size
-        self.hid_size  = hid_size
-        self.out_size  = out_size
-        self.fch1 = torch.nn.Linear(self.in_size, self.hid_size)
-        self.fch2 = torch.nn.Linear(self.hid_size, self.hid_size)
-        self.fcout = torch.nn.Linear(self.hid_size, self.out_size)
-        self.relu = torch.nn.ReLU()
-        self.sigmoid = torch.nn.Sigmoid()
+    def __init__(self, num_classes: int = 1000) -> None:
+        super(AlexNet, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2),  # C1.Net
+            nn.ReLU(inplace=True), # C1.Act
+            nn.MaxPool2d(kernel_size=3, stride=2), # P1.Act
+            nn.Conv2d(64, 192, kernel_size=5, padding=2), # C2.Net
+            nn.ReLU(inplace=True), # C2.Act
+            nn.MaxPool2d(kernel_size=3, stride=2), # P2.Act
+            nn.Conv2d(192, 384, kernel_size=3, padding=1),  # C3.Net
+            nn.ReLU(inplace=True),  # C3.Act
+            nn.Conv2d(384, 256, kernel_size=3, padding=1), # C4.Net
+            nn.ReLU(inplace=True),  # C4.Act
+            nn.Conv2d(256, 256, kernel_size=3, padding=1), # C5.Net
+            nn.ReLU(inplace=True), # C5.Act
+            nn.MaxPool2d(kernel_size=3, stride=2),  # P5.Act
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d((6, 6))
+        self.classifier = nn.Sequential(
+            nn.Dropout(),  # D1 -- ignore
+            nn.Linear(256 * 6 * 6, 4096), # Cl1.Net
+            nn.ReLU(inplace=True), # Cl1.Act
+            nn.Dropout(),  # D2 
+            nn.Linear(4096, 4096), # Cl2.Net
+            nn.ReLU(inplace=True),  # Cl2.Act
+            nn.Linear(4096, num_classes), # Out.Net
+        )
         self.est = etor.State(self)
-        # mapping between projection names in etorch.Network and state_dict weights entry names
-        self.est.wtmap = {"InputToHidden1": "fch1", "Hidden1ToHidden2": "fch2", "Hidden2ToOutput": "fcout"} 
-        self.rec_wts = True # record weight values -- off by default
-        
-    def forward(self, x):
-        # we have to call rec to record each state -- returns immediately if not turned on
-        self.est.rec(x, "Input.Act")
-        x = self.fch1(x)
-        self.est.rec(x, "Hidden1.Net")
-        x = self.relu(x)
-        self.est.rec(x, "Hidden1.Act")
-        x = self.fch2(x)
-        self.est.rec(x, "Hidden2.Net")
-        x = self.relu(x)
-        self.est.rec(x, "Hidden2.Act")
-        x = self.fcout(x)
-        self.est.rec(x, "Output.Net")
-        x = self.sigmoid(x)
-        self.est.rec(x, "Output.Act")
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        fnames = ["C1.Net", "C1.Act", "P1.Act", "C2.Net", "C2.Act", "P2.Act", "C3.Net", "C3.Act", "C4.Net", "C4.Act", "C5.Net", "C5.Act", "P5.Act"]
+        self.est.rec(x, "Image.Act")
+        for i, f in enumerate(self.features):
+            x = f(x)
+            self.est.rec(x, fnames[i])
+        x = self.avgpool(x)
+        self.est.rec(x, "AvgPool.Act")
+        x = torch.flatten(x, 1)
+        cnames = ["", "Cl1.Net", "Cl1.Act", "", "Cl2.Net", "Cl2.Act", "Out.Net"]
+        for i, f in enumerate(self.classifier):
+            x = f(x)
+            cnm = cnames[i]
+            if len(cnm) > 0:
+                self.est.rec(x, cnm)
         return x
-        
-    def weight_reset(self):
-        def reset(m):
-            if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
-                m.reset_parameters()
-        self.apply(reset)
+
+
+def alexnet(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> AlexNet:
+    r"""AlexNet model architecture from the
+    `"One weird trick..." <https://arxiv.org/abs/1404.5997>`_ paper.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    model = AlexNet(**kwargs)
+    if pretrained:
+        state_dict = load_state_dict_from_url(model_urls['alexnet'],
+                                              progress=progress)
+        model.load_state_dict(state_dict)
+    return model
+
 
 # note: we cannot use methods for callbacks from Go -- must be separate functions
 # so below are all the callbacks from the GUI toolbar actions
@@ -367,17 +387,13 @@ class Sim(pygiv.ClassViewObj):
         ss.TestEnv.Init(0)
 
     def ConfigNet(ss, net):
-        ss.TorchNet = Feedforward(25, 35, 25)
-        ss.Criterion = torch.nn.BCELoss()
-        ss.Optimizer = torch.optim.SGD(ss.TorchNet.parameters(), lr = ss.Lrate) # todo: how to change?
-
-        ss.TorchNet.train()
+        ss.TorchNet = alexnet(pretrained = True)
 
         print(ss.TorchNet)
         for pt in ss.TorchNet.state_dict():
             print(pt, "\t", ss.TorchNet.state_dict()[pt].size())
 
-        net.InitName(net, "RA25")
+        net.InitName(net, "AlexNet")
         inp = net.AddLayer2D("Input", 5, 5, emer.Input)
         hid1 = net.AddLayer2D("Hidden1", 5, 7, emer.Hidden)
         hid2 = net.AddLayer2D("Hidden2", 5, 7, emer.Hidden)
@@ -453,10 +469,9 @@ class Sim(pygiv.ClassViewObj):
 
         if train:
             ss.Optimizer.zero_grad()
-            
         out = ss.TorchNet(ss.TInPatsTrl)
-        loss = ss.Criterion(out.squeeze(), ss.TOutPatsTrl)
-        ss.TrlSSE = loss.item()
+        # loss = ss.Criterion(out.squeeze(), ss.TOutPatsTrl)
+        # ss.TrlSSE = loss.item()
         if train:
             loss.backward()
             ss.Optimizer.step()
@@ -512,7 +527,7 @@ class Sim(pygiv.ClassViewObj):
         run = ss.TrainEnv.Run.Cur
         ss.TrainEnv.Init(run)
         ss.TestEnv.Init(run)
-        ss.TorchNet.weight_reset()
+        # ss.TorchNet.weight_reset()
         ss.InitStats()
         ss.TrnEpcLog.SetNumRows(0)
         ss.TstEpcLog.SetNumRows(0)
@@ -674,9 +689,9 @@ class Sim(pygiv.ClassViewObj):
         if setMsg = true then we output a message for each param that was set.
         """
         
-        for param_group in ss.Optimizer.param_groups:
-            param_group['lr'] = ss.Lrate
-        
+        # for param_group in ss.Optimizer.param_groups:
+        #     param_group['lr'] = ss.Lrate
+
         # todo: fancy params stuff not yet supported...
         return
         
@@ -836,7 +851,7 @@ class Sim(pygiv.ClassViewObj):
         dt.SetFromSchema(sch, 0)
 
     def ConfigTrnEpcPlot(ss, plt, dt):
-        plt.Params.Title = "Etorch Random Associator 25 Epoch Plot"
+        plt.Params.Title = "eTorch AlexNet Epoch Plot"
         plt.Params.XAxisCol = "Epoch"
         plt.SetTable(dt)
 
@@ -904,7 +919,7 @@ class Sim(pygiv.ClassViewObj):
         dt.SetFromSchema(sch, nt)
 
     def ConfigTstTrlPlot(ss, plt, dt):
-        plt.Params.Title = "Etorch Random Associator 25 Test Trial Plot"
+        plt.Params.Title = "eTorch AlexNet Test Trial Plot"
         plt.Params.XAxisCol = "Trial"
         plt.SetTable(dt)
         # order of params: on, fixMin, min, fixMax, max
@@ -967,7 +982,7 @@ class Sim(pygiv.ClassViewObj):
         dt.SetFromSchema(sch, 0)
 
     def ConfigTstEpcPlot(ss, plt, dt):
-        plt.Params.Title = "Etorch Random Associator 25 Testing Epoch Plot"
+        plt.Params.Title = "eTorch AlexNet Testing Epoch Plot"
         plt.Params.XAxisCol = "Epoch"
         plt.SetTable(dt)
         # order of params: on, fixMin, min, fixMax, max
@@ -1012,7 +1027,7 @@ class Sim(pygiv.ClassViewObj):
         dt.SetFromSchema(sch, np)
 
     def ConfigTstCycPlot(ss, plt, dt):
-        plt.Params.Title = "Etorch Random Associator 25 Test Cycle Plot"
+        plt.Params.Title = "eTorch AlexNet Test Cycle Plot"
         plt.Params.XAxisCol = "Cycle"
         plt.SetTable(dt)
         # order of params: on, fixMin, min, fixMax, max
@@ -1081,7 +1096,7 @@ class Sim(pygiv.ClassViewObj):
         dt.SetFromSchema(sch, 0)
 
     def ConfigRunPlot(ss, plt, dt):
-        plt.Params.Title = "Etorch Random Associator 25 Run Plot"
+        plt.Params.Title = "eTorch AlexNet Run Plot"
         plt.Params.XAxisCol = "Run"
         plt.SetTable(dt)
         # order of params: on, fixMin, min, fixMax, max
@@ -1099,10 +1114,10 @@ class Sim(pygiv.ClassViewObj):
         width = 1600
         height = 1200
 
-        gi.SetAppName("etra25")
-        gi.SetAppAbout('This demonstrates a basic eTorch model. See <a href="https://github.com/emer/emergent">emergent on GitHub</a>.</p>')
+        gi.SetAppName("alexnet")
+        gi.SetAppAbout('This tests AlexNet so you can visualize its response to inputs. See <a href="https://github.com/emer/emergent">emergent on GitHub</a>.</p>')
 
-        win = gi.NewMainWindow("etra25", "eTorch Random Associator", width, height)
+        win = gi.NewMainWindow("AlexNet", "eTorch AlexNet", width, height)
         ss.Win = win
 
         vp = win.WinViewport2D()
@@ -1212,10 +1227,7 @@ TheSim = Sim()
 def main(argv):
     TheSim.Config()
     TheSim.ConfigGui()
-    # super minimal version with just the network:
-    # nv = etor.NetView(TheSim.Net)
-    # nv.open()
     TheSim.Init()
     
 main(sys.argv[1:])
-
+    
