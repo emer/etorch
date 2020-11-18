@@ -37,7 +37,7 @@ type Prjn struct {
 	RConNAvgMax minmax.AvgMax32             `inactive:"+" desc:"average and maximum number of recv connections in the receiving layer"`
 	RConIdxSt   []int32                     `view:"-" desc:"starting index into ConIdx list for each neuron in receiving layer -- just a list incremented by ConN"`
 	RConIdx     []int32                     `view:"-" desc:"index of other neuron on sending side of projection, ordered by the receiving layer's order of units as the outer loop (each start is in ConIdxSt), and then by the sending layer's units within that"`
-	RSynIdx     []int32                     `view:"-" desc:"index of synaptic state values for each recv unit x connection, for the receiver projection which does not own the synapses, and instead indexes into sender-ordered list"`
+	SSynIdx     []int32                     `view:"-" desc:"index of synaptic state values for each send unit x connection, for the sending projection which does not own the synapses, and instead indexes into recv-ordered list"`
 	SConN       []int32                     `view:"-" desc:"number of sending connections for each neuron in the sending layer, as a flat list"`
 	SConNAvgMax minmax.AvgMax32             `inactive:"+" desc:"average and maximum number of sending connections in the sending layer"`
 	SConIdxSt   []int32                     `view:"-" desc:"starting index into ConIdx list for each neuron in sending layer -- just a list incremented by ConN"`
@@ -52,6 +52,7 @@ type Prjn struct {
 // Init MUST be called to initialize the prjn's pointer to itself as an emer.Prjn
 // which enables the proper interface methods to be called.
 func (pj *Prjn) Init(prjn emer.Prjn) {
+	pj.AddWtDWtVars()
 }
 
 func (pj *Prjn) TypeName() string    { return "Prjn" } // always, for params..
@@ -157,9 +158,8 @@ func (pj *Prjn) BuildStru() error {
 		log.Printf("%v programmer error: total recv cons %v != total send cons %v\n", pj.String(), tconr, tcons)
 	}
 	pj.RConIdx = make([]int32, tconr)
-	pj.RSynIdx = make([]int32, tconr)
+	pj.SSynIdx = make([]int32, tconr)
 	pj.SConIdx = make([]int32, tcons)
-
 	sconN := make([]int32, slen) // temporary mem needed to tracks cur n of sending cons
 
 	cbits := cons.Values
@@ -186,7 +186,7 @@ func (pj *Prjn) BuildStru() error {
 				break
 			}
 			pj.SConIdx[sst+sci] = int32(ri)
-			pj.RSynIdx[rst+rci] = sst + sci
+			pj.SSynIdx[sst+sci] = rst + rci
 			(sconN[si])++
 			rci++
 		}
@@ -283,7 +283,7 @@ func (pj *Prjn) SynVarProps() map[string]string {
 
 // SynIdx returns the index of the synapse between given send, recv unit indexes
 // (1D, flat indexes). Returns -1 if synapse not found between these two neurons.
-// Requires searching within connections for receiving unit.
+// Requires searching within connections for sending unit.
 func (pj *Prjn) SynIdx(sidx, ridx int) int {
 	nc := int(pj.RConN[ridx])
 	st := int(pj.RConIdxSt[ridx])
@@ -292,8 +292,7 @@ func (pj *Prjn) SynIdx(sidx, ridx int) int {
 		if si != sidx {
 			continue
 		}
-		rsi := pj.RSynIdx[st+ci]
-		return int(rsi)
+		return int(st + ci)
 	}
 	return -1
 }
@@ -320,16 +319,15 @@ func (pj *Prjn) SynVarNum() int {
 // This is the core synapse var access method used by other methods,
 // so it is the only one that needs to be updated for derived layer types.
 func (pj *Prjn) SynVal1D(varIdx int, synIdx int) float32 {
-	ns := 0
-	if synIdx < 0 || synIdx >= ns {
-		return math32.NaN()
-	}
 	if varIdx < 0 || varIdx >= pj.SynVarNum() {
 		return math32.NaN()
 	}
-	// sy := &pj.Syns[synIdx]
-	// return sy.VarByIndex(varIdx)
-	return 0
+	vnm := pj.VarNames[varIdx]
+	st := pj.States[vnm]
+	if synIdx < 0 || synIdx >= st.Len() {
+		return math32.NaN()
+	}
+	return st.Value1D(synIdx)
 }
 
 // SynVals sets values of given variable name for each synapse, using the natural ordering
@@ -341,15 +339,16 @@ func (pj *Prjn) SynVals(vals *[]float32, varNm string) error {
 	if err != nil {
 		return err
 	}
-	ns := 0
+	st := pj.States[varNm]
+	ns := st.Len()
 	if *vals == nil || cap(*vals) < ns {
 		*vals = make([]float32, ns)
 	} else if len(*vals) < ns {
 		*vals = (*vals)[0:ns]
 	}
-	// for i := range pj.Syns {
-	// 	(*vals)[i] = pj.LeabraPrj.SynVal1D(vidx, i)
-	// }
+	for i := range st.Values {
+		(*vals)[i] = st.Values[i]
+	}
 	return nil
 }
 
@@ -373,16 +372,13 @@ func (pj *Prjn) SetSynVal(varNm string, sidx, ridx int, val float32) error {
 	if err != nil {
 		return err
 	}
-	ns := 0
+	st := pj.States[varNm]
+	ns := st.Len()
 	synIdx := pj.SynIdx(sidx, ridx)
 	if synIdx < 0 || synIdx >= ns {
 		return err
 	}
-	// sy := &pj.Syns[synIdx]
-	// sy.SetVarByIndex(vidx, val)
-	// if varNm == "Wt" {
-	// 	pj.Learn.LWtFmWt(sy)
-	// }
+	st.Values[synIdx] = val
 	return nil
 }
 
@@ -393,8 +389,12 @@ func (pj *Prjn) Build() error {
 		return err
 	}
 	pj.BuildVarNames()
-	// nrcon := len(pj.RConIdx)
-	// rsh := pj.Recv.Shape()
+	pj.States = make(map[string]*etensor.Float32, len(pj.VarNamesMap))
+	ncons := len(pj.RConIdx)
+	for vn := range pj.VarNamesMap {
+		st := etensor.NewFloat32([]int{ncons}, nil, nil)
+		pj.States[vn] = st
+	}
 	return nil
 }
 

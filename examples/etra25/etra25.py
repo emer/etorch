@@ -11,7 +11,8 @@
 
 from leabra import go, etorch, emer, relpos, eplot, env, agg, patgen, prjn, etable, efile, split, etensor, params, netview, rand, erand, gi, giv, pygiv, pyparams, pyet, mat32
 
-import importlib as il  #il.reload(ra25) -- doesn't seem to work for reasons unknown
+import etor
+
 import io, sys, getopt
 from datetime import datetime, timezone
 
@@ -48,47 +49,34 @@ class Feedforward(torch.nn.Module):
         self.fcout = torch.nn.Linear(self.hid_size, self.out_size)
         self.relu = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
-        self.record = True # whether to record activations
-        self.input_act = torch.FloatTensor()
-        self.h1_net = torch.FloatTensor()
-        self.h1_act = torch.FloatTensor()
-        self.h2_net = torch.FloatTensor()
-        self.h2_act = torch.FloatTensor()
-        self.out_net = torch.FloatTensor()
-        self.out_act = torch.FloatTensor()
+        self.est = etor.State(self)
+        # mapping between projection names in etorch.Network and state_dict weights entry names
+        self.est.wtmap = {"InputToHidden1": "fch1", "Hidden1ToHidden2": "fch2", "Hidden2ToOutput": "fcout"} 
+        self.rec_wts = True # record weight values -- off by default
         
     def forward(self, x):
-        h1_net = self.fch1(x)
-        h1_act = self.relu(h1_net)
-        h2_net = self.fch2(h1_act)
-        h2_act = self.relu(h2_net)
-        out_net = self.fcout(h2_act)
-        out_act = self.sigmoid(out_net)
-        if self.record:
-            self.input_act = x
-            self.h1_net = h1_net
-            self.h1_act = h1_act
-            self.h2_net = h2_net
-            self.h2_act = h2_act
-            self.out_net = out_net
-            self.out_act = out_act
-        return out_act
+        # we have to call rec to record each state -- returns immediately if not turned on
+        self.est.rec(x, "Input.Act")
+        x = self.fch1(x)
+        self.est.rec(x, "Hidden1.Net")
+        x = self.relu(x)
+        self.est.rec(x, "Hidden1.Act")
+        x = self.fch2(x)
+        self.est.rec(x, "Hidden2.Net")
+        x = self.relu(x)
+        self.est.rec(x, "Hidden2.Act")
+        x = self.fcout(x)
+        self.est.rec(x, "Output.Net")
+        x = self.sigmoid(x)
+        self.est.rec(x, "Output.Act")
+        return x
         
-    def reset_parameters(self):
-        self.fch1.reset_parameters()
-        self.fch2.reset_parameters()
-        self.fcout.reset_parameters()
+    def weight_reset(self):
+        def reset(m):
+            if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
+                m.reset_parameters()
+        self.apply(reset)
 
-def UpdateLayerState(ly, tt, stnm):
-    """
-    UpdateLayerState copies Torch.FloatTensor to layer State vars
-    """
-    if len(tt) == 0:
-        return
-    tl = etorch.Layer(ly)
-    st = tl.States[stnm]
-    st.Values.copy(tt)
-    
 # note: we cannot use methods for callbacks from Go -- must be separate functions
 # so below are all the callbacks from the GUI toolbar actions
 
@@ -257,6 +245,8 @@ class Sim(pygiv.ClassViewObj):
         self.SetTags("TestEnv", 'desc:"Testing environment -- manages iterating over testing"')
         self.ViewOn = True
         self.SetTags("ViewOn", 'desc:"whether to update the network view while running"')
+        self.ViewWts = True
+        self.SetTags("ViewWts", 'desc:"whether to update the network weights view while running -- slower than acts"')
         self.TestInterval = int(5)
         self.SetTags("TestInterval", 'desc:"how often to run through all the test patterns, in terms of training epochs -- can use 0 or -1 for no testing"')
         self.LayStatNms = go.Slice_string(["Hidden1", "Hidden2", "Output"])
@@ -382,7 +372,11 @@ class Sim(pygiv.ClassViewObj):
         ss.Optimizer = torch.optim.SGD(ss.TorchNet.parameters(), lr = ss.Lrate) # todo: how to change?
 
         ss.TorchNet.train()
-        
+
+        print(ss.TorchNet)
+        for pt in ss.TorchNet.state_dict():
+            print(pt, "\t", ss.TorchNet.state_dict()[pt].size())
+
         net.InitName(net, "RA25")
         inp = net.AddLayer2D("Input", 5, 5, emer.Input)
         hid1 = net.AddLayer2D("Hidden1", 5, 7, emer.Hidden)
@@ -400,19 +394,9 @@ class Sim(pygiv.ClassViewObj):
         net.Defaults()
         ss.SetParams("Network", ss.LogSetParams) # only set Network params
         net.Build()
+        
+        ss.TorchNet.est.init_net(net)  # grabs all the info from network
 
-    def UpdateNetState(ss):
-        """
-        This is the key function that copies Torch state to Net state
-        """
-        UpdateLayerState(ss.Net.Layers[0], ss.TorchNet.input_act, "Act")
-        UpdateLayerState(ss.Net.Layers[1], ss.TorchNet.h1_act, "Act")
-        UpdateLayerState(ss.Net.Layers[1], ss.TorchNet.h1_net, "Netin")
-        UpdateLayerState(ss.Net.Layers[2], ss.TorchNet.h2_act, "Act")
-        UpdateLayerState(ss.Net.Layers[2], ss.TorchNet.h2_net, "Netin")
-        UpdateLayerState(ss.Net.Layers[3], ss.TorchNet.out_act, "Act")
-        UpdateLayerState(ss.Net.Layers[3], ss.TorchNet.out_net, "Netin")
-    
     def Init(ss):
         """
         Init restarts the run, and initializes everything, including network weights
@@ -424,6 +408,7 @@ class Sim(pygiv.ClassViewObj):
         ss.StopNow = False
         ss.SetParams("", ss.LogSetParams) # all sheets
         ss.NewRun()
+        ss.TorchNet.est.rec_wts = ss.ViewWts
         ss.UpdateView(True)
 
     def NewRndSeed(ss):
@@ -446,7 +431,7 @@ class Sim(pygiv.ClassViewObj):
 
     def UpdateView(ss, train):
         if ss.NetView != 0 and ss.NetView.IsVisible():
-            ss.UpdateNetState()
+            ss.TorchNet.est.update()  # does everything
             ss.NetView.Record(ss.Counters(train))
             ss.NetView.GoUpdate()
 
@@ -525,7 +510,7 @@ class Sim(pygiv.ClassViewObj):
         run = ss.TrainEnv.Run.Cur
         ss.TrainEnv.Init(run)
         ss.TestEnv.Init(run)
-        ss.TorchNet.reset_parameters()
+        ss.TorchNet.weight_reset()
         ss.InitStats()
         ss.TrnEpcLog.SetNumRows(0)
         ss.TstEpcLog.SetNumRows(0)
@@ -1225,6 +1210,8 @@ TheSim = Sim()
 def main(argv):
     TheSim.Config()
     TheSim.ConfigGui()
+    nv = etor.NetView(TheSim.Net)
+    nv.open()
     TheSim.Init()
     
 main(sys.argv[1:])

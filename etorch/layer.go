@@ -153,7 +153,7 @@ func (ly *Layer) AddVars(varNms []string) {
 
 // AddNetinActBiasVars adds standard Netin, Act, Bias variables
 func (ly *Layer) AddNetinActBiasVars() {
-	ly.AddVars([]string{"Netin", "Act", "Bias"})
+	ly.AddVars([]string{"Net", "Act", "Bias"})
 }
 
 // NPools returns the number of unit sub-pools according to the shape parameters.
@@ -378,37 +378,35 @@ func (ly *Layer) UnitVal(varNm string, idx []int) float32 {
 // then the value is set to math32.NaN().
 // Returns error on invalid var name or lack of recv prjn (vals always set to nan on prjn err).
 func (ly *Layer) RecvPrjnVals(vals *[]float32, varNm string, sendLay emer.Layer, sendIdx1D int, prjnType string) error {
-	/*
-		var err error
-		nn := len(ly.Neurons)
-		if *vals == nil || cap(*vals) < nn {
-			*vals = make([]float32, nn)
-		} else if len(*vals) < nn {
-			*vals = (*vals)[0:nn]
-		}
-		nan := math32.NaN()
-		for i := 0; i < nn; i++ {
-			(*vals)[i] = nan
-		}
-		if sendLay == nil {
-			return fmt.Errorf("sending layer is nil")
-		}
-		var pj emer.Prjn
-		if prjnType != "" {
-			pj, err = sendLay.SendPrjns().RecvNameTypeTry(ly.Nm, prjnType)
-			if pj == nil {
-				pj, err = sendLay.SendPrjns().RecvNameTry(ly.Nm)
-			}
-		} else {
+	var err error
+	nn := ly.Shp.Len()
+	if *vals == nil || cap(*vals) < nn {
+		*vals = make([]float32, nn)
+	} else if len(*vals) < nn {
+		*vals = (*vals)[0:nn]
+	}
+	nan := math32.NaN()
+	for i := 0; i < nn; i++ {
+		(*vals)[i] = nan
+	}
+	if sendLay == nil {
+		return fmt.Errorf("sending layer is nil")
+	}
+	var pj emer.Prjn
+	if prjnType != "" {
+		pj, err = sendLay.SendPrjns().RecvNameTypeTry(ly.Nm, prjnType)
+		if pj == nil {
 			pj, err = sendLay.SendPrjns().RecvNameTry(ly.Nm)
 		}
-		if pj == nil {
-			return err
-		}
-		for ri := range ly.Neurons {
-			(*vals)[ri] = pj.SynVal(varNm, sendIdx1D, ri) // this will work with any variable -- slower, but necessary
-		}
-	*/
+	} else {
+		pj, err = sendLay.SendPrjns().RecvNameTry(ly.Nm)
+	}
+	if pj == nil {
+		return err
+	}
+	for ri := 0; ri < nn; ri++ {
+		(*vals)[ri] = pj.SynVal(varNm, sendIdx1D, ri) // this will work with any variable -- slower, but necessary
+	}
 	return nil
 }
 
@@ -423,37 +421,35 @@ func (ly *Layer) RecvPrjnVals(vals *[]float32, varNm string, sendLay emer.Layer,
 // then the value is set to math32.NaN().
 // Returns error on invalid var name or lack of recv prjn (vals always set to nan on prjn err).
 func (ly *Layer) SendPrjnVals(vals *[]float32, varNm string, recvLay emer.Layer, recvIdx1D int, prjnType string) error {
-	/*
-		var err error
-		nn := len(ly.Neurons)
-		if *vals == nil || cap(*vals) < nn {
-			*vals = make([]float32, nn)
-		} else if len(*vals) < nn {
-			*vals = (*vals)[0:nn]
-		}
-		nan := math32.NaN()
-		for i := 0; i < nn; i++ {
-			(*vals)[i] = nan
-		}
-		if recvLay == nil {
-			return fmt.Errorf("receiving layer is nil")
-		}
-		var pj emer.Prjn
-		if prjnType != "" {
-			pj, err = recvLay.RecvPrjns().SendNameTypeTry(ly.Nm, prjnType)
-			if pj == nil {
-				pj, err = recvLay.RecvPrjns().SendNameTry(ly.Nm)
-			}
-		} else {
+	var err error
+	nn := ly.Shp.Len()
+	if *vals == nil || cap(*vals) < nn {
+		*vals = make([]float32, nn)
+	} else if len(*vals) < nn {
+		*vals = (*vals)[0:nn]
+	}
+	nan := math32.NaN()
+	for i := 0; i < nn; i++ {
+		(*vals)[i] = nan
+	}
+	if recvLay == nil {
+		return fmt.Errorf("receiving layer is nil")
+	}
+	var pj emer.Prjn
+	if prjnType != "" {
+		pj, err = recvLay.RecvPrjns().SendNameTypeTry(ly.Nm, prjnType)
+		if pj == nil {
 			pj, err = recvLay.RecvPrjns().SendNameTry(ly.Nm)
 		}
-		if pj == nil {
-			return err
-		}
-		for si := range ly.Neurons {
-			(*vals)[si] = pj.SynVal(varNm, si, recvIdx1D)
-		}
-	*/
+	} else {
+		pj, err = recvLay.RecvPrjns().SendNameTry(ly.Nm)
+	}
+	if pj == nil {
+		return err
+	}
+	for si := 0; si < nn; si++ {
+		(*vals)[si] = pj.SynVal(varNm, si, recvIdx1D)
+	}
 	return nil
 }
 

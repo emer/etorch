@@ -8,6 +8,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/emer/emergent/emer"
 	"github.com/emer/emergent/netview"
@@ -77,6 +78,7 @@ func (ss *Sim) Config() {
 // and resets the epoch log table
 func (ss *Sim) Init() {
 	ss.InitActs(ss.Net)
+	ss.InitWts(ss.Net)
 	ss.UpdateView(true)
 }
 
@@ -115,7 +117,7 @@ func (ss *Sim) ConfigNet(net *etorch.Network) {
 		return
 	}
 	ss.InitActs(net)
-	// net.InitWts()
+	ss.InitWts(net)
 }
 
 func (ss *Sim) InitActs(net *etorch.Network) {
@@ -123,6 +125,19 @@ func (ss *Sim) InitActs(net *etorch.Network) {
 		ly := lyi.(*etorch.Layer)
 		act := ly.States["Act"]
 		patgen.PermutedBinary(act, 6, .9, 0)
+	}
+}
+
+func (ss *Sim) InitWts(net *etorch.Network) {
+	for _, lyi := range net.Layers {
+		ly := lyi.(*etorch.Layer)
+		for _, pji := range ly.RcvPrjns {
+			pj := pji.(*etorch.Prjn)
+			wt := pj.States["Wt"]
+			for i := range wt.Values {
+				wt.Values[i] = rand.Float32()
+			}
+		}
 	}
 }
 

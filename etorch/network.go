@@ -424,6 +424,7 @@ func (nt *Network) BuildVarNames() {
 	}
 
 	nt.PrjnVarNames = make([]string, len(nt.PrjnVarNamesMap))
+	i = 0
 	for nm := range nt.PrjnVarNamesMap {
 		nt.PrjnVarNames[i] = nm
 		i++
