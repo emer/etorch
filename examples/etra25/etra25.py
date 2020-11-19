@@ -1,15 +1,12 @@
-#!/usr/local/bin/pyleabra -i
+#!/usr/local/bin/etorch -i
 
 # Copyright (c) 2020, The Emergent Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-# use:
-# pyleabra -i etra25.py 
-# to run in gui interactive mode from the command line (or pyleabra, import etra25)
-# see main function at the end for startup args
+# change etorch -> leabra if running from pyleabra executable instead of etorch
 
-from leabra import go, etorch, etor, emer, relpos, eplot, env, agg, patgen, prjn, etable, efile, split, etensor, params, netview, rand, erand, gi, giv, pygiv, pyparams, pyet, mat32
+from etorch import go, etorch, etor, emer, relpos, eplot, env, agg, patgen, prjn, etable, efile, split, etensor, params, netview, rand, erand, gi, giv, pygiv, pyparams, pyet, mat32
 
 import io, sys, getopt
 from datetime import datetime, timezone

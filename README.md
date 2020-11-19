@@ -1,8 +1,8 @@
 # eTorch
 
-eTorch is the emergent GUI and other support for PyTorch networks: provides a NetView for torch networks.
+eTorch provides the emergent GUI and other support for [PyTorch](https://pytorch.org) networks, including an interactive 3D NetView for visualizing network dynamics, and other GUI elements for controlling the model and plotting training and testing performance, etc.
 
-Each `etorch.Layer` stores the state variables as etensor.Float32, which are just copied via python code from the `torch.FloatTensor` state values recorded from running the network.
+The key idea for the NetView is that each `etorch.Layer` stores the state variables as a `etensor.Float32`, which are just copied via Python code from the `torch.FloatTensor` state values recorded from running the network.
 
 The `etor` python-side library provides a `State` object that handles the recording of state during the `forward` pass through a torch model.  You just need to call the `rec` method for each step that you want to record.  Then, when you want to update the `NetView`, you call `update` -- the `init_net` method called with the `torch.Network` configures everything so this update is then fully self-contained.
 
@@ -34,6 +34,16 @@ As usual, the best way to see everything is to check out the `examples`:
 
 * `alexnet` is the standard `torchvision` `alexnet` example, showing how large convolutional neural networks look with the visualization.  Because these models are so ... visual, you can really see what each step is doing.  This setup is only for testing, and doesn't show weights.
 
-For now, use the `pyleabra` executable, which includes `etorch` to facilitate interoperability between leabra and torch models.  A separate `etorch` executable will also be configured soon.
+![Screenshot of AlexNet example](alexnet_screen.png?raw=true "Screenshot of AlexNet example")
+
+# Installation
+
+See the https://github.com/emer/etorch/python directory for instructions on building an `etorch` program that is just like the `python3` executable, but also includes all of the Go-based infrastructure that enables etorch to work.
+
+You can also use the `pyleabra` executable from https://github.com/emer/leabra/python, which includes `etorch` to facilitate interoperability between leabra and torch models.
+
+# Interoperating between Go and Python
+
+See https://github.com/emer/etable/examples/pyet for example code for converting between the Go `etable.Table` and `numpy`, `torch`, and `pandas` table structures.
 
 
