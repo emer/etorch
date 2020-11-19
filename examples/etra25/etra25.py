@@ -9,9 +9,7 @@
 # to run in gui interactive mode from the command line (or pyleabra, import etra25)
 # see main function at the end for startup args
 
-from leabra import go, etorch, emer, relpos, eplot, env, agg, patgen, prjn, etable, efile, split, etensor, params, netview, rand, erand, gi, giv, pygiv, pyparams, pyet, mat32
-
-import etor
+from leabra import go, etorch, etor, emer, relpos, eplot, env, agg, patgen, prjn, etable, efile, split, etensor, params, netview, rand, erand, gi, giv, pygiv, pyparams, pyet, mat32
 
 import io, sys, getopt
 from datetime import datetime, timezone
@@ -159,7 +157,7 @@ def NewRndSeedCB(recv, send, sig, data):
     TheSim.NewRndSeed()
 
 def ReadmeCB(recv, send, sig, data):
-    gi.OpenURL("https://github.com/emer/etorch/blob/master/examples/ra25/README.md")
+    gi.OpenURL("https://github.com/emer/etorch/blob/master/examples/etra25/README.md")
 
 def FilterSSE(et, row):
     return etable.Table(handle=et).CellFloat("SSE", row) > 0 # include error trials    
@@ -221,8 +219,6 @@ class Sim(pygiv.ClassViewObj):
         self.SetTags("TstErrLog", 'view:"no-inline" desc:"log of all test trials where errors were made"')
         self.TstErrStats = etable.Table()
         self.SetTags("TstErrStats", 'view:"no-inline" desc:"stats on test trials where errors were made"')
-        self.TstCycLog = etable.Table()
-        self.SetTags("TstCycLog", 'view:"no-inline" desc:"testing cycle-level log data"')
         self.RunLog = etable.Table()
         self.SetTags("RunLog", 'view:"no-inline" desc:"summary log of each run"')
         self.RunStats = etable.Table()
@@ -335,7 +331,6 @@ class Sim(pygiv.ClassViewObj):
         ss.ConfigTrnEpcLog(ss.TrnEpcLog)
         ss.ConfigTstEpcLog(ss.TstEpcLog)
         ss.ConfigTstTrlLog(ss.TstTrlLog)
-        ss.ConfigTstCycLog(ss.TstCycLog)
         ss.ConfigRunLog(ss.RunLog)
 
     def ConfigEnv(ss):
@@ -978,50 +973,6 @@ class Sim(pygiv.ClassViewObj):
         plt.SetColParams("PctCor", eplot.On, eplot.FixMin, 0, eplot.FixMax, 1) # default plot
         return plt
 
-    def LogTstCyc(ss, dt, cyc):
-        """
-        LogTstCyc adds data from current trial to the TstCycLog table.
-        log just has 100 cycles, is overwritten
-        """
-        if dt.Rows <= cyc:
-            dt.SetNumRows(cyc + 1)
-
-        dt.SetCellFloat("Cycle", cyc, float(cyc))
-        for lnm in ss.LayStatNms:
-            ly = etorch.Layer(ss.Net.LayerByName(lnm))
-            dt.SetCellFloat(ly.Nm+" Ge.Avg", cyc,  float(ly.Pool(0).Inhib.Ge.Avg))
-            dt.SetCellFloat(ly.Nm+" Act.Avg", cyc, float(ly.Pool(0).Inhib.Act.Avg))
-
-        if ss.TstCycPlot != 0 and cyc%10 == 0: # too slow to do every cyc
-            # note: essential to use Go version of update when called from another goroutine
-            ss.TstCycPlot.GoUpdate()
-
-    def ConfigTstCycLog(ss, dt):
-        dt.SetMetaData("name", "TstCycLog")
-        dt.SetMetaData("desc", "Record of activity etc over one trial by cycle")
-        dt.SetMetaData("read-only", "true")
-        dt.SetMetaData("precision", str(LogPrec))
-
-        np = 100 # max cycles
-        sch = etable.Schema(
-            [etable.Column("Cycle", etensor.INT64, go.nil, go.nil)]
-        )
-        for lnm in ss.LayStatNms:
-            sch.append(etable.Column(lnm + " Ge.Avg", etensor.FLOAT64, go.nil, go.nil))
-            sch.append(etable.Column(lnm + " Act.Avg", etensor.FLOAT64, go.nil, go.nil))
-        dt.SetFromSchema(sch, np)
-
-    def ConfigTstCycPlot(ss, plt, dt):
-        plt.Params.Title = "Etorch Random Associator 25 Test Cycle Plot"
-        plt.Params.XAxisCol = "Cycle"
-        plt.SetTable(dt)
-        # order of params: on, fixMin, min, fixMax, max
-        plt.SetColParams("Cycle", eplot.Off, eplot.FixMin, 0, eplot.FloatMax, 0)
-        for lnm in ss.LayStatNms:
-            plt.SetColParams(lnm+" Ge.Avg", True, True, 0, True, .5)
-            plt.SetColParams(lnm+" Act.Avg", True, True, 0, True, .5)
-        return plt
-
     def LogRun(ss, dt):
         """
         LogRun adds data from current run to the RunLog table.
@@ -1128,9 +1079,6 @@ class Sim(pygiv.ClassViewObj):
         nv = netview.NetView()
         tv.AddTab(nv, "NetView")
         nv.Var = "Act"
-        # nv.Params.ColorMap = "Jet" // default is ColdHot
-        # which fares pretty well in terms of discussion here:
-        # https://matplotlib.org/tutorials/colors/colormaps.html
         nv.SetNet(ss.Net)
         ss.NetView = nv
 
@@ -1144,10 +1092,6 @@ class Sim(pygiv.ClassViewObj):
         plt = eplot.Plot2D()
         tv.AddTab(plt, "TstTrlPlot")
         ss.TstTrlPlot = ss.ConfigTstTrlPlot(plt, ss.TstTrlLog)
-
-        plt = eplot.Plot2D()
-        tv.AddTab(plt, "TstCycPlot")
-        ss.TstCycPlot = ss.ConfigTstCycPlot(plt, ss.TstCycLog)
 
         plt = eplot.Plot2D()
         tv.AddTab(plt, "TstEpcPlot")
