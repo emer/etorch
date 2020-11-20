@@ -17,10 +17,9 @@ Here's the `forward` code for the `alexnet` example:
         x = self.avgpool(x)
         self.est.rec(x, "AP.Act")
         x = torch.flatten(x, 1)
-        cnames = ["", "Cl1.Net", "Cl1.Act", "", "Cl2.Net", "Cl2.Act", "Out.Net"]
         for i, f in enumerate(self.classifier):
             x = f(x)
-            cnm = cnames[i]
+            cnm = self.cnames[i]
             if len(cnm) > 0:
                 self.est.rec(x, cnm)
         return x
@@ -44,6 +43,6 @@ You can also use the `pyleabra` executable from https://github.com/emer/leabra/p
 
 # Interoperating between Go and Python
 
-See https://github.com/emer/etable/examples/pyet for example code for converting between the Go `etable.Table` and `numpy`, `torch`, and `pandas` table structures.
+See [etable pyet](https://github.com/emer/etable/tree/master/examples/pyet) for example code for converting between the Go `etable.Table` and `numpy`, `torch`, and `pandas` table structures.
 
 

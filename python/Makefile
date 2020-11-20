@@ -30,8 +30,8 @@ build:
 
 install-pkg:
 	# this does a local install of the package, building the sdist and then directly installing it
-	# copy pygiv.py etc to etorch so it will be installed along with rest
-	cp pygiv/*.py etorch/
+	# copy pyside/*.py etc to etorch so it will be installed along with rest
+	cp pyside/*.py etorch/
 	rm -rf dist build */*.egg-info *.egg-info
 	$(PYTHON) setup.py sdist
 	$(PIP) install dist/*.tar.gz
