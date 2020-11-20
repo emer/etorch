@@ -387,7 +387,7 @@ class Sim(pygiv.ClassViewObj):
         ss.SetParams("Network", ss.LogSetParams) # only set Network params
         net.Build()
         
-        ss.TorchNet.est.init_net(net)  # grabs all the info from network
+        ss.TorchNet.est.set_net(net)
 
     def Init(ss):
         """
@@ -423,7 +423,6 @@ class Sim(pygiv.ClassViewObj):
 
     def UpdateView(ss, train):
         if ss.NetView != 0 and ss.NetView.IsVisible():
-            ss.TorchNet.est.update()  # does everything
             ss.NetView.Record(ss.Counters(train))
             ss.NetView.GoUpdate()
 
@@ -443,6 +442,9 @@ class Sim(pygiv.ClassViewObj):
         if ss.Win != 0:
             ss.Win.PollEvents() # this is essential for GUI responsiveness while running
 
+        # only record if visible
+        ss.TorchNet.est.record = (ss.NetView != 0 and ss.NetView.IsVisible())
+            
         if train:
             ss.Optimizer.zero_grad()
             

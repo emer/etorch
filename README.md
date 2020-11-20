@@ -4,7 +4,7 @@ eTorch provides the emergent GUI and other support for [PyTorch](https://pytorch
 
 The key idea for the NetView is that each `etorch.Layer` stores the state variables as a `etensor.Float32`, which are just copied via Python code from the `torch.FloatTensor` state values recorded from running the network.
 
-The `etor` python-side library provides a `State` object that handles the recording of state during the `forward` pass through a torch model.  You just need to call the `rec` method for each step that you want to record.  Then, when you want to update the `NetView`, you call `update` -- the `init_net` method called with the `torch.Network` configures everything so this update is then fully self-contained.
+The `etor` python-side library provides a `State` object that handles the recording of state during the `forward` pass through a torch model.  You just need to call the `rec` method for each step that you want to record. The `set_net` method is called with the `torch.Network` to record state to.
 
 Here's the `forward` code for the `alexnet` example:
 
@@ -43,6 +43,6 @@ You can also use the `pyleabra` executable from https://github.com/emer/leabra/p
 
 # Interoperating between Go and Python
 
-See [etable pyet](https://github.com/emer/etable/tree/master/examples/pyet) for example code for converting between the Go `etable.Table` and `numpy`, `torch`, and `pandas` table structures.
+See [etable pyet](https://github.com/emer/etable/tree/master/examples/pyet) for example code for converting between the Go `etable.Table` and `numpy`, `torch`, and `pandas` table structures, using the `pyet` Python library that is installed with etorch.
 
 
