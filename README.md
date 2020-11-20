@@ -37,9 +37,9 @@ As usual, the best way to see everything is to check out the `examples`:
 
 # Installation
 
-See the https://github.com/emer/etorch/python directory for instructions on building an `etorch` program that is just like the `python3` executable, but also includes all of the Go-based infrastructure that enables etorch to work.
+See the https://github.com/emer/etorch/tree/master/python directory for instructions on building an `etorch` program that is just like the `python3` executable, but also includes all of the Go-based infrastructure that enables etorch to work.
 
-You can also use the `pyleabra` executable from https://github.com/emer/leabra/python, which includes `etorch` to facilitate interoperability between leabra and torch models.
+You can also use the `pyleabra` executable from https://github.com/emer/leabra/tree/master/python, which includes `etorch` to facilitate interoperability between leabra and torch models.
 
 # Interoperating between Go and Python
 
