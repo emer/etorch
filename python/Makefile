@@ -23,7 +23,7 @@ install: install-pkg install-exe
 # note: it is important that leabra come before deep otherwise deep captures all the common types
 # unfortunately this means that all sub-packages need to be explicitly listed.
 gen:
-	gopy exe -name=etorch -vm=python3 -no-warn -exclude=driver,oswin,draw,example,examples,gif,jpeg,png,draw -main="runtime.LockOSThread(); gimain.Main(func() {  GoPyMainRun() })" math/rand image github.com/anthonynsimon/bild/transform github.com/goki/ki/ki github.com/goki/ki/kit github.com/goki/mat32  github.com/goki/gi/units github.com/goki/gi/gi github.com/goki/gi/svg github.com/goki/gi/giv github.com/goki/gi/gi3d github.com/goki/gi/gimain github.com/emer/etable github.com/emer/emergent github.com/emer/vision github.com/emer/etorch
+	gopy exe -name=etorch -vm=python3 -no-warn -exclude=driver,oswin,draw,example,examples,gif,jpeg,png,draw -main="runtime.LockOSThread(); gimain.Main(func() {  GoPyMainRun() })" math/rand image github.com/anthonynsimon/bild/transform github.com/goki/ki/ki github.com/goki/ki/kit github.com/goki/mat32  github.com/goki/gi/units github.com/goki/gi/gist github.com/goki/gi/girl github.com/goki/gi/gi github.com/goki/gi/svg github.com/goki/gi/giv github.com/goki/gi/gi3d github.com/goki/gi/gimain github.com/emer/etable github.com/emer/emergent github.com/emer/vision github.com/emer/etorch
 	
 build:
 	$(MAKE) -C etorch build

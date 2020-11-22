@@ -17,7 +17,7 @@ clean:
 	$(GOCLEAN)
 	
 # NOTE: MUST update version number here prior to running 'make release'
-VERS=v1.1.0rc
+VERS=v1.0.0
 PACKAGE=etorch
 GIT_COMMIT=`git rev-parse --short HEAD`
 VERS_DATE=`date -u +%Y-%m-%d\ %H:%M`
