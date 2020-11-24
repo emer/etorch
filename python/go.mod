@@ -1,6 +1,6 @@
 module github.com/emer/etorch/python
 
-go 1.15
+go 1.13
 
 require (
 	github.com/alecthomas/chroma v0.8.2
@@ -9,7 +9,7 @@ require (
 	github.com/aymerick/douceur v0.2.0
 	github.com/emer/emergent v1.1.13
 	github.com/emer/etable v1.0.18
-	github.com/emer/etorch v1.0.0
+	github.com/emer/etorch v1.0.1
 	github.com/emer/leabra v1.1.14
 	github.com/emer/vision v1.1.6
 	github.com/go-gl/mathgl v1.0.0
