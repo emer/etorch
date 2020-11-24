@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-from leabra import go, params
+from etorch import go, params
 
 def ApplyParams(cls, sheet, setMsg):
     """
