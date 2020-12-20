@@ -55,20 +55,20 @@ func (pj *Prjn) Init(prjn emer.Prjn) {
 	pj.AddWtDWtVars()
 }
 
-func (pj *Prjn) TypeName() string    { return "Prjn" } // always, for params..
-func (pj *Prjn) Class() string       { return pj.Cls }
-func (pj *Prjn) SetClass(cls string) { pj.Cls = cls }
+func (pj *Prjn) TypeName() string              { return "Prjn" } // always, for params..
+func (pj *Prjn) Class() string                 { return pj.Cls }
+func (pj *Prjn) SetClass(cls string) emer.Prjn { pj.Cls = cls; return pj }
 func (pj *Prjn) Name() string {
 	return pj.Send.Name() + "To" + pj.Recv.Name()
 }
-func (pj *Prjn) Label() string               { return pj.Name() }
-func (pj *Prjn) RecvLay() emer.Layer         { return pj.Recv }
-func (pj *Prjn) SendLay() emer.Layer         { return pj.Send }
-func (pj *Prjn) Pattern() prjn.Pattern       { return pj.Pat }
-func (pj *Prjn) SetPattern(pat prjn.Pattern) { pj.Pat = pat }
-func (pj *Prjn) Type() emer.PrjnType         { return pj.Typ }
-func (pj *Prjn) SetType(typ emer.PrjnType)   { pj.Typ = typ }
-func (pj *Prjn) PrjnTypeName() string        { return pj.Typ.String() }
+func (pj *Prjn) Label() string                         { return pj.Name() }
+func (pj *Prjn) RecvLay() emer.Layer                   { return pj.Recv }
+func (pj *Prjn) SendLay() emer.Layer                   { return pj.Send }
+func (pj *Prjn) Pattern() prjn.Pattern                 { return pj.Pat }
+func (pj *Prjn) SetPattern(pat prjn.Pattern) emer.Prjn { pj.Pat = pat; return pj }
+func (pj *Prjn) Type() emer.PrjnType                   { return pj.Typ }
+func (pj *Prjn) SetType(typ emer.PrjnType) emer.Prjn   { pj.Typ = typ; return pj }
+func (pj *Prjn) PrjnTypeName() string                  { return pj.Typ.String() }
 
 func (pj *Prjn) IsOff() bool {
 	return pj.Off || pj.Recv.IsOff() || pj.Send.IsOff()
