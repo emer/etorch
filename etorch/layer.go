@@ -13,7 +13,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/chewxy/math32"
 	"github.com/emer/emergent/emer"
 	"github.com/emer/emergent/params"
 	"github.com/emer/emergent/relpos"
@@ -295,10 +294,10 @@ func (ly *Layer) UnitVarNum() int {
 // so it is the only one that needs to be updated for derived layer types.
 func (ly *Layer) UnitVal1D(varIdx int, idx int) float32 {
 	if idx < 0 || idx >= ly.Shp.Len() {
-		return math32.NaN()
+		return mat32.NaN()
 	}
 	if varIdx < 0 || varIdx >= ly.UnitVarNum() {
-		return math32.NaN()
+		return mat32.NaN()
 	}
 	vnm := ly.VarNames[varIdx]
 	st := ly.States[vnm]
@@ -317,7 +316,7 @@ func (ly *Layer) UnitVals(vals *[]float32, varNm string) error {
 	}
 	_, err := ly.UnitVarIdx(varNm)
 	if err != nil {
-		nan := math32.NaN()
+		nan := mat32.NaN()
 		for i := 0; i < nn; i++ {
 			(*vals)[i] = nan
 		}
@@ -361,7 +360,7 @@ func (ly *Layer) UnitValsTensor(tsr etensor.Tensor, varNm string) error {
 func (ly *Layer) UnitVal(varNm string, idx []int) float32 {
 	_, err := ly.UnitVarIdx(varNm)
 	if err != nil {
-		return math32.NaN()
+		return mat32.NaN()
 	}
 	st := ly.States[varNm]
 	return st.Value(idx)
@@ -375,7 +374,7 @@ func (ly *Layer) UnitVal(varNm string, idx []int) float32 {
 // useful when there are multiple projections between two layers.
 // Returns error on invalid var name.
 // If the receiving neuron is not connected to the given sending layer or neuron
-// then the value is set to math32.NaN().
+// then the value is set to mat32.NaN().
 // Returns error on invalid var name or lack of recv prjn (vals always set to nan on prjn err).
 func (ly *Layer) RecvPrjnVals(vals *[]float32, varNm string, sendLay emer.Layer, sendIdx1D int, prjnType string) error {
 	var err error
@@ -385,7 +384,7 @@ func (ly *Layer) RecvPrjnVals(vals *[]float32, varNm string, sendLay emer.Layer,
 	} else if len(*vals) < nn {
 		*vals = (*vals)[0:nn]
 	}
-	nan := math32.NaN()
+	nan := mat32.NaN()
 	for i := 0; i < nn; i++ {
 		(*vals)[i] = nan
 	}
@@ -418,7 +417,7 @@ func (ly *Layer) RecvPrjnVals(vals *[]float32, varNm string, sendLay emer.Layer,
 // useful when there are multiple projections between two layers.
 // Returns error on invalid var name.
 // If the sending neuron is not connected to the given receiving layer or neuron
-// then the value is set to math32.NaN().
+// then the value is set to mat32.NaN().
 // Returns error on invalid var name or lack of recv prjn (vals always set to nan on prjn err).
 func (ly *Layer) SendPrjnVals(vals *[]float32, varNm string, recvLay emer.Layer, recvIdx1D int, prjnType string) error {
 	var err error
@@ -428,7 +427,7 @@ func (ly *Layer) SendPrjnVals(vals *[]float32, varNm string, recvLay emer.Layer,
 	} else if len(*vals) < nn {
 		*vals = (*vals)[0:nn]
 	}
-	nan := math32.NaN()
+	nan := mat32.NaN()
 	for i := 0; i < nn; i++ {
 		(*vals)[i] = nan
 	}
