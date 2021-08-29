@@ -4,4 +4,5 @@ wheel
 numpy
 pandas
 torch
+torchvision
 

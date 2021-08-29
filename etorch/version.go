@@ -3,8 +3,7 @@
 package etorch
 
 const (
-	Version     = "v1.0.7"
-	GitCommit   = "1bf6312" // the commit JUST BEFORE the release
-	VersionDate = "2021-04-29 10:52" // UTC
+	Version     = "v1.0.8"
+	GitCommit   = "89f6ed2"          // the commit JUST BEFORE the release
+	VersionDate = "2021-08-29 10:34" // UTC
 )
-

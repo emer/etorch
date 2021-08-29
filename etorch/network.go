@@ -463,8 +463,8 @@ func (nt *Network) SynVarProps() map[string]string {
 
 // WriteWtsJSON writes network weights (and any other state that adapts with learning)
 // to JSON-formatted output.
-func (nt *Network) WriteWtsJSON(w io.Writer) {
-
+func (nt *Network) WriteWtsJSON(w io.Writer) error {
+	return nil
 }
 
 // ReadWtsJSON reads network weights (and any other state that adapts with learning)
