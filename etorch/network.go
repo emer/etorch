@@ -22,17 +22,18 @@ import (
 
 // etorch.Network holds the layers of the network
 type Network struct {
-	EmerNet         emer.Network          `copy:"-" json:"-" xml:"-" view:"-" desc:"we need a pointer to ourselves as an emer.Network, which can always be used to extract the true underlying type of object when network is embedded in other structs -- function receivers do not have this ability so this is necessary."`
-	Nm              string                `desc:"overall name of network -- helps discriminate if there are multiple"`
-	Layers          emer.Layers           `desc:"list of layers"`
-	LayMap          map[string]emer.Layer `view:"-" desc:"map of name to layers -- layer names must be unique"`
-	MinPos          mat32.Vec3            `view:"-" desc:"minimum display position in network"`
-	MaxPos          mat32.Vec3            `view:"-" desc:"maximum display position in network"`
-	MetaData        map[string]string     `desc:"optional metadata that is saved in network weights files -- e.g., can indicate number of epochs that were trained, or any other information about this network that would be useful to save"`
-	LayVarNamesMap  map[string]int        `view:"-" desc:"map of variable names accumulated across layers, with index into the LayVarNames list"`
-	LayVarNames     []string              `view:"-" desc:"list of variable names accumulated across layers, alpha order"`
-	PrjnVarNamesMap map[string]int        `view:"-" desc:"map of variable names accumulated across prjns, with index into the LayVarNames list"`
-	PrjnVarNames    []string              `view:"-" desc:"list of variable names accumulated across prjns, alpha order"`
+	EmerNet         emer.Network                `copy:"-" json:"-" xml:"-" view:"-" desc:"we need a pointer to ourselves as an emer.Network, which can always be used to extract the true underlying type of object when network is embedded in other structs -- function receivers do not have this ability so this is necessary."`
+	Nm              string                      `desc:"overall name of network -- helps discriminate if there are multiple"`
+	Layers          emer.Layers                 `desc:"list of layers"`
+	LayMap          map[string]emer.Layer       `view:"-" desc:"map of name to layers -- layer names must be unique"`
+	LayTypeMap      map[emer.LayerType][]string `view:"-" desc:"map of layer types -- made during Build"`
+	MinPos          mat32.Vec3                  `view:"-" desc:"minimum display position in network"`
+	MaxPos          mat32.Vec3                  `view:"-" desc:"maximum display position in network"`
+	MetaData        map[string]string           `desc:"optional metadata that is saved in network weights files -- e.g., can indicate number of epochs that were trained, or any other information about this network that would be useful to save"`
+	LayVarNamesMap  map[string]int              `view:"-" desc:"map of variable names accumulated across layers, with index into the LayVarNames list"`
+	LayVarNames     []string                    `view:"-" desc:"list of variable names accumulated across layers, alpha order"`
+	PrjnVarNamesMap map[string]int              `view:"-" desc:"map of variable names accumulated across prjns, with index into the LayVarNames list"`
+	PrjnVarNames    []string                    `view:"-" desc:"list of variable names accumulated across prjns, alpha order"`
 }
 
 // InitName MUST be called to initialize the network's pointer to itself as an emer.Network
@@ -78,6 +79,15 @@ func (nt *Network) MakeLayMap() {
 	for _, ly := range nt.Layers {
 		nt.LayMap[ly.Name()] = ly
 	}
+}
+
+// LayersByType returns a list of layer names of given type(s)
+func (nt *Network) LayersByType(types ...emer.LayerType) []string {
+	var nms []string
+	for _, lt := range types {
+		nms = append(nms, nt.LayTypeMap[lt]...)
+	}
+	return nms
 }
 
 // StdVertLayout arranges layers in a standard vertical (z axis stack) layout, by setting
@@ -327,6 +337,7 @@ func (nt *Network) LateralConnectLayerPrjn(lay emer.Layer, pat prjn.Pattern, pj 
 // and patterns of interconnectivity
 func (nt *Network) Build() error {
 	emsg := ""
+	nt.LayTypeMap = make(map[emer.LayerType][]string)
 	for li, ly := range nt.Layers {
 		ly.SetIndex(li)
 		if ly.IsOff() {
@@ -336,6 +347,9 @@ func (nt *Network) Build() error {
 		if err != nil {
 			emsg += err.Error() + "\n"
 		}
+		ll := nt.LayTypeMap[ly.Type()]
+		ll = append(ll, ly.Name())
+		nt.LayTypeMap[ly.Type()] = ll
 	}
 	nt.Layout()
 	nt.BuildVarNames()
