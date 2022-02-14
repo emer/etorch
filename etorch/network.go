@@ -82,10 +82,20 @@ func (nt *Network) MakeLayMap() {
 }
 
 // LayersByType returns a list of layer names of given type(s)
+// If no types are passed, all layer names in order are returned.
 func (nt *Network) LayersByType(types ...emer.LayerType) []string {
 	var nms []string
-	for _, lt := range types {
-		nms = append(nms, nt.LayTypeMap[lt]...)
+	if len(types) == 0 {
+		for _, ly := range nt.Layers {
+			if ly.IsOff() {
+				continue
+			}
+			nms = append(nms, ly.Name())
+		}
+	} else {
+		for _, lt := range types {
+			nms = append(nms, nt.LayTypeMap[lt]...)
+		}
 	}
 	return nms
 }
