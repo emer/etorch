@@ -35,6 +35,7 @@ type Layer struct {
 	Rel         relpos.Rel                  `view:"inline" desc:"Spatial relationship to other layer, determines positioning"`
 	Ps          mat32.Vec3                  `desc:"position of lower-left-hand corner of layer in 3D space, computed from Rel.  Layers are in X-Y width - height planes, stacked vertically in Z axis."`
 	Idx         int                         `desc:"a 0..n-1 index of the position of the layer within list of layers in the network."`
+	RepIxs      []int                       `desc:"indexes of representative units in the layer, for computationally expensive stats or displays"`
 	RcvPrjns    emer.Prjns                  `desc:"list of receiving projections into this layer from other layers"`
 	SndPrjns    emer.Prjns                  `desc:"list of sending projections from this layer to other layers"`
 	States      map[string]*etensor.Float32 `desc:"map of states of the layer (activation, etc) -- name is variable name, tensor holds the data"`
@@ -78,6 +79,8 @@ func (ly *Layer) RecvPrjn(idx int) emer.Prjn { return ly.RcvPrjns[idx] }
 func (ly *Layer) SendPrjns() *emer.Prjns     { return &ly.SndPrjns }
 func (ly *Layer) NSendPrjns() int            { return len(ly.SndPrjns) }
 func (ly *Layer) SendPrjn(idx int) emer.Prjn { return ly.SndPrjns[idx] }
+func (ly *Layer) SetRepIdxs(idxs []int)      { ly.RepIxs = idxs }
+func (ly *Layer) RepIdxs() []int             { return ly.RepIxs }
 
 func (ly *Layer) Idx4DFrom2D(x, y int) ([]int, bool) {
 	lshp := ly.Shape()
@@ -364,6 +367,49 @@ func (ly *Layer) UnitVal(varNm string, idx []int) float32 {
 	}
 	st := ly.States[varNm]
 	return st.Value(idx)
+}
+
+// UnitValsRepTensor fills in values of given variable name on unit
+// for a smaller subset of representative units in the layer, into given tensor.
+// This is used for computationally intensive stats or displays that work
+// much better with a smaller number of units.
+// The set of representative units are defined by SetRepIdxs -- all units
+// are used if no such subset has been defined.
+// If tensor is not already big enough to hold the values, it is
+// set to a 1D shape to hold all the values if subset is defined,
+// otherwise it calls UnitValsTensor and is identical to that.
+// Returns error on invalid var name.
+func (ly *Layer) UnitValsRepTensor(tsr etensor.Tensor, varNm string) error {
+	nu := len(ly.RepIxs)
+	if nu == 0 {
+		return ly.UnitValsTensor(tsr, varNm)
+	}
+	if tsr == nil {
+		err := fmt.Errorf("etorch.UnitValsRepTensor: Tensor is nil")
+		log.Println(err)
+		return err
+	}
+	if tsr.Len() != nu {
+		tsr.SetShape([]int{nu}, nil, []string{"Units"})
+	}
+	_, err := ly.UnitVarIdx(varNm)
+	if err != nil {
+		nan := math.NaN()
+		for i, _ := range ly.RepIxs {
+			tsr.SetFloat1D(i, nan)
+		}
+		return err
+	}
+	st := ly.States[varNm]
+	for i, ui := range ly.RepIxs {
+		v := st.Value1D(ui)
+		if mat32.IsNaN(v) {
+			tsr.SetFloat1D(i, math.NaN())
+		} else {
+			tsr.SetFloat1D(i, float64(v))
+		}
+	}
+	return nil
 }
 
 // RecvPrjnVals fills in values of given synapse variable name,
