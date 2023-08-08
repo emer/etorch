@@ -23,18 +23,42 @@ import (
 
 // etorch.Network holds the layers of the network
 type Network struct {
-	EmerNet         emer.Network          `copy:"-" json:"-" xml:"-" view:"-" desc:"we need a pointer to ourselves as an emer.Network, which can always be used to extract the true underlying type of object when network is embedded in other structs -- function receivers do not have this ability so this is necessary."`
-	Nm              string                `desc:"overall name of network -- helps discriminate if there are multiple"`
-	Layers          emer.Layers           `desc:"list of layers"`
-	LayMap          map[string]emer.Layer `view:"-" desc:"map of name to layers -- layer names must be unique"`
-	LayClassMap     map[string][]string   `view:"-" desc:"map of layer classes -- made during Build"`
-	MinPos          mat32.Vec3            `view:"-" desc:"minimum display position in network"`
-	MaxPos          mat32.Vec3            `view:"-" desc:"maximum display position in network"`
-	MetaData        map[string]string     `desc:"optional metadata that is saved in network weights files -- e.g., can indicate number of epochs that were trained, or any other information about this network that would be useful to save"`
-	LayVarNamesMap  map[string]int        `view:"-" desc:"map of variable names accumulated across layers, with index into the LayVarNames list"`
-	LayVarNames     []string              `view:"-" desc:"list of variable names accumulated across layers, alpha order"`
-	PrjnVarNamesMap map[string]int        `view:"-" desc:"map of variable names accumulated across prjns, with index into the LayVarNames list"`
-	PrjnVarNames    []string              `view:"-" desc:"list of variable names accumulated across prjns, alpha order"`
+
+	// [view: -] we need a pointer to ourselves as an emer.Network, which can always be used to extract the true underlying type of object when network is embedded in other structs -- function receivers do not have this ability so this is necessary.
+	EmerNet emer.Network `copy:"-" json:"-" xml:"-" view:"-" desc:"we need a pointer to ourselves as an emer.Network, which can always be used to extract the true underlying type of object when network is embedded in other structs -- function receivers do not have this ability so this is necessary."`
+
+	// overall name of network -- helps discriminate if there are multiple
+	Nm string `desc:"overall name of network -- helps discriminate if there are multiple"`
+
+	// list of layers
+	Layers emer.Layers `desc:"list of layers"`
+
+	// [view: -] map of name to layers -- layer names must be unique
+	LayMap map[string]emer.Layer `view:"-" desc:"map of name to layers -- layer names must be unique"`
+
+	// [view: -] map of layer classes -- made during Build
+	LayClassMap map[string][]string `view:"-" desc:"map of layer classes -- made during Build"`
+
+	// [view: -] minimum display position in network
+	MinPos mat32.Vec3 `view:"-" desc:"minimum display position in network"`
+
+	// [view: -] maximum display position in network
+	MaxPos mat32.Vec3 `view:"-" desc:"maximum display position in network"`
+
+	// optional metadata that is saved in network weights files -- e.g., can indicate number of epochs that were trained, or any other information about this network that would be useful to save
+	MetaData map[string]string `desc:"optional metadata that is saved in network weights files -- e.g., can indicate number of epochs that were trained, or any other information about this network that would be useful to save"`
+
+	// [view: -] map of variable names accumulated across layers, with index into the LayVarNames list
+	LayVarNamesMap map[string]int `view:"-" desc:"map of variable names accumulated across layers, with index into the LayVarNames list"`
+
+	// [view: -] list of variable names accumulated across layers, alpha order
+	LayVarNames []string `view:"-" desc:"list of variable names accumulated across layers, alpha order"`
+
+	// [view: -] map of variable names accumulated across prjns, with index into the LayVarNames list
+	PrjnVarNamesMap map[string]int `view:"-" desc:"map of variable names accumulated across prjns, with index into the LayVarNames list"`
+
+	// [view: -] list of variable names accumulated across prjns, alpha order
+	PrjnVarNames []string `view:"-" desc:"list of variable names accumulated across prjns, alpha order"`
 }
 
 // InitName MUST be called to initialize the network's pointer to itself as an emer.Network

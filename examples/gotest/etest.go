@@ -46,11 +46,20 @@ func guirun() {
 // as arguments to methods, and provides the core GUI interface (note the view tags
 // for the fields which provide hints to how things should be displayed).
 type Sim struct {
+
+	// [view: no-inline] the network -- click to view / edit parameters for layers, prjns, etc
 	Net *etorch.Network `view:"no-inline" desc:"the network -- click to view / edit parameters for layers, prjns, etc"`
 
-	Win      *gi.Window                  `view:"-" desc:"main GUI window"`
-	NetView  *netview.NetView            `view:"-" desc:"the network viewer"`
-	ToolBar  *gi.ToolBar                 `view:"-" desc:"the master toolbar"`
+	// [view: -] main GUI window
+	Win *gi.Window `view:"-" desc:"main GUI window"`
+
+	// [view: -] the network viewer
+	NetView *netview.NetView `view:"-" desc:"the network viewer"`
+
+	// [view: -] the master toolbar
+	ToolBar *gi.ToolBar `view:"-" desc:"the master toolbar"`
+
+	// [view: -] for holding layer values
 	ValsTsrs map[string]*etensor.Float32 `view:"-" desc:"for holding layer values"`
 }
 
